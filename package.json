@@ -1,0 +1,25 @@
+{
+  "name": "tp-integrador-js",
+  "version": "1.0.0",
+  "description": "Aplicación web desarrollada con Node.js y Express para la gestión de usuarios",
+  "keywords": [
+    "node",
+    "express",
+    "usuarios",
+    "backend"
+  ],
+  "author": "Richard Salazar",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
