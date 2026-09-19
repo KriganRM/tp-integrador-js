@@ -10,7 +10,6 @@ export const registrarVisita = (req, res, next) => {
     if (error) {
       console.error("Error al registrar la visita:", error.message);
     }
-
     // Continúa hacia el controlador correspondiente.
     next();
   });
