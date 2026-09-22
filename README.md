@@ -1,31 +1,12 @@
-# TP Integrador JavaScript — Módulos 6 y 7
+# TP Integrador JavaScript — Módulos 6, 7 y 8
 
-Aplicación backend desarrollada por Richard Salazar con Node.js, Express, PostgreSQL y Sequelize para gestionar usuarios y registrar pedidos relacionados.
+**Autor:** Richard Salazar.
 
-## Alcance implementado
-
-- Página principal HTML con CSS y ruta de estado en JSON.
-- Registro de visitas a `/` y `/status` mediante archivos planos.
-- Conexión a PostgreSQL mediante variables de entorno.
-- CRUD completo de usuarios.
-- Validación de peticiones con express-validator.
-- Modelos Usuario y Pedido relacionados mediante una asociación 1:N.
-- Consulta de un usuario con sus pedidos usando `include`.
-- Creación de un usuario y su primer pedido dentro de una transacción.
-- Simulación de error para comprobar rollback.
-- Comparación de consultas SQL manuales con consultas ORM.
-
-El CRUD completo de pedidos, las relaciones 1:1 y N:M, los filtros generales, la autenticación JWT y la subida de archivos no están implementados en esta versión. La parte específica del módulo 7 incluye una relación 1:N; los requisitos generales del proyecto completo contemplan funcionalidades adicionales.
-
-## Requisitos y tecnologías
-
-- Node.js 18 o superior y npm.
-- PostgreSQL instalado y en ejecución.
-- Express, Sequelize, pg, pg-hstore, dotenv y express-validator.
-- Nodemon para desarrollo.
-- Postman para probar las rutas; pgAdmin para comprobar los registros.
+Aplicación backend con Node.js, Express, PostgreSQL y Sequelize para gestionar usuarios, pedidos, perfiles y roles. Incluye autenticación JWT, subida de archivos, validaciones y pruebas con Postman.
 
 ## Instalación
+
+Requisitos: Node.js 18 o superior, npm y PostgreSQL.
 
 ```bash
 git clone https://github.com/KriganRM/tp-integrador-js.git
@@ -33,224 +14,149 @@ cd tp-integrador-js
 npm install
 ```
 
-Crear una base de datos PostgreSQL llamada `tp_integrador_js`. En pgAdmin se puede usar Create → Database o ejecutar lo siguiente desde otra base existente:
+Crear la base de datos desde pgAdmin:
 
 ```sql
 CREATE DATABASE tp_integrador_js;
 ```
 
-Copiar `.env.example` como `.env` en la raíz. En PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Completar el archivo con las credenciales locales:
+Copiar `.env.example` como `.env` y completar los valores locales:
 
 ```env
 PORT=3000
 DATABASE_URL=postgres://TU_USUARIO:TU_PASSWORD@localhost:5432/tp_integrador_js
+JWT_SECRET=TU_SECRETO_ALEATORIO
 ```
 
-Si el usuario o la contraseña contienen caracteres especiales de una URL, deben codificarse para usarlos en `DATABASE_URL`. El archivo `.env` está excluido de Git mediante `.gitignore`; `.env.example` contiene solamente valores de ejemplo.
+Para generar el secreto:
 
-Iniciar el servidor:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+No subir `.env` ni `node_modules` a GitHub. Mantener solo valores de ejemplo en `.env.example`. Si las credenciales contienen caracteres especiales, codificarlos para utilizarlos en la URL.
+
+Asegurar que existan `logs` y `uploads` en la raíz. En PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force -Path logs, uploads
+```
+
+Si se reutiliza la base del módulo 7, agregar la columna de contraseña:
+
+```sql
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password VARCHAR(100);
+```
+
+Iniciar desde la raíz del proyecto:
 
 ```bash
 npm run dev
 ```
 
-También se puede ejecutar sin Nodemon:
+También se puede usar `npm start`. `sequelize.authenticate()` verifica la conexión y `sequelize.sync()` crea las tablas faltantes, sin borrar datos ni modificar automáticamente tablas existentes. Los datos de prueba no se cargan automáticamente.
 
-```bash
-npm start
-```
+## Organización y funcionalidades
 
-Al iniciar, `authenticate()` verifica la conexión y `sync()` crea las tablas que aún no existen. Se utiliza sin `force` ni `alter`: no borra tablas ni actualiza automáticamente la estructura de tablas existentes. La base de datos debe crearse antes de iniciar la aplicación.
+- `routes/`: endpoints y orden de los middlewares.
+- `controllers/`: respuestas HTTP y manejo de errores.
+- `services/`: consultas, transacciones y guardado de archivos.
+- `middlewares/`: validaciones, JWT y registro de visitas.
+- `models/`: modelos y relaciones; `config/db.js`: conexión a PostgreSQL.
+- `public/`, `logs/`, `uploads/` y `Capturas/`: estilos, registros, archivos y evidencias.
 
-Los registros de prueba no se cargan automáticamente; se crean con las peticiones descritas abajo.
+Se implementaron CRUD de usuarios y pedidos, búsqueda por nombre, consulta SQL manual y ORM, y creación de usuario con pedido en una transacción con COMMIT o ROLLBACK.
 
-## Organización
-
-| Carpeta o archivo | Responsabilidad |
+| Relación | Implementación |
 | --- | --- |
-| `app.js` | Configura Express, registra rutas e inicia la aplicación. |
-| `config/db.js` | Configura la instancia de Sequelize. |
-| `models/Usuario.js`, `models/Pedido.js` | Definen campos y validaciones de los modelos. |
-| `models/index.js` | Define las relaciones y exporta los modelos. |
-| `routes/` | Define las direcciones y el orden de los middlewares. |
-| `controllers/` | Llama a servicios y genera respuestas HTTP. |
-| `services/` | Contiene consultas, transacciones y escritura de logs. |
-| `middlewares/usuarioValidaciones.js` | Valida los datos de usuarios y los ID. |
-| `middlewares/transaccionValidaciones.js` | Valida los datos de usuario y pedido. |
-| `middlewares/manejarValidaciones.js` | Responde 400 cuando hay errores de entrada. |
-| `middlewares/visitLogger.js` | Registra visitas a las rutas públicas configuradas. |
-| `public/css/style.css` | Estilos de la página principal. |
-| `logs/log.txt` | Historial de visitas. |
-| `Capturas/` | Evidencias de las pruebas manuales. |
+| Usuario–Perfil, 1:1 | `hasOne`/`belongsTo`, con `usuarioId` único. |
+| Usuario–Pedido, 1:N | `hasMany`/`belongsTo`; se impide borrar usuarios con pedidos. |
+| Usuario–Rol, N:M | `belongsToMany` mediante `usuarios_roles`. |
 
-Las peticiones de escritura pasan por las reglas de validación y el middleware que recoge los errores antes de llegar al controlador. Si son válidas, el controlador llama al servicio y este consulta la base de datos mediante los modelos.
+El perfil se elimina junto con su usuario mediante CASCADE. Los roles permiten demostrar asociaciones múltiples; no asignan permisos a las rutas.
 
-## Modelos y relación
+## Endpoints
 
-`Usuario` contiene `id`, `nombre`, `email`, `createdAt` y `updatedAt`. El correo es único y debe tener un formato válido.
+Dirección base: `http://localhost:3000`. **JWT** indica que requiere Bearer Token.
 
-`Pedido` contiene `id`, `descripcion`, `total`, `usuarioId`, `createdAt` y `updatedAt`. El total se almacena como `DECIMAL(10,2)`; puede aparecer como texto en el JSON para conservar la precisión decimal.
+| Método | Ruta | JWT | Función |
+| --- | --- | --- | --- |
+| GET | `/` | No | Página principal. |
+| GET | `/status` | No | Estado del servidor. |
+| POST | `/registro` | No | Registrar usuario con contraseña. |
+| POST | `/login` | No | Obtener token. |
+| POST | `/usuarios` | No | Crear usuario sin contraseña. |
+| GET | `/usuarios` | No | Listar; filtro opcional `?nombre=prueba`. |
+| GET | `/usuarios/sql` | No | Consultar mediante SQL manual. |
+| PUT | `/usuarios/:id` | Sí | Actualizar nombre y correo. |
+| DELETE | `/usuarios/:id` | Sí | Eliminar usuario sin pedidos. |
+| GET | `/usuarios/:id/pedidos` | No | Consultar usuario y pedidos. |
+| POST | `/transacciones/usuario-con-pedido` | No | Crear usuario y pedido en una transacción. |
+| POST | `/pedidos` | Sí | Crear pedido. |
+| GET | `/pedidos` | Sí | Listar pedidos. |
+| GET | `/pedidos/:id` | Sí | Consultar pedido. |
+| PUT | `/pedidos/:id` | Sí | Actualizar pedido. |
+| DELETE | `/pedidos/:id` | Sí | Eliminar pedido. |
+| POST | `/usuarios/:id/perfil` | Sí | Crear perfil único. |
+| GET | `/usuarios/:id/perfil` | Sí | Consultar usuario y perfil. |
+| POST | `/roles` | Sí | Crear rol. |
+| POST | `/usuarios/:id/roles/:rolId` | Sí | Asociar rol existente. |
+| GET | `/usuarios/:id/roles` | Sí | Consultar usuario y roles. |
+| POST | `/upload` | Sí | Subir archivo. |
+| GET | `/uploads/:nombreArchivo` | No | Acceder al archivo subido. |
 
-Un usuario tiene muchos pedidos mediante `hasMany`; cada pedido pertenece a un usuario mediante `belongsTo`. La clave foránea es `usuarioId`. Los alias son `pedidos` y `usuario`.
+Las respuestas controladas usan `status`, `message` y `data`. Códigos: **200** éxito, **201** creación, **400** datos inválidos, **401** autenticación fallida, **404** no encontrado, **409** conflicto, **413** archivo demasiado grande y **500** error inesperado o rollback simulado.
 
-La opción `onDelete: "RESTRICT"` impide eliminar usuarios con pedidos asociados. El controlador responde 409 ante ese conflicto, incluyendo el caso de PostgreSQL con código `23001`.
+## Autenticación y ejemplos de uso
 
-## Rutas
-
-Dirección base: `http://localhost:3000`.
-
-| Método | Ruta | Función |
-| --- | --- | --- |
-| GET | `/` | Página principal. |
-| GET | `/status` | Estado del servidor Express. |
-| POST | `/usuarios` | Crear un usuario. |
-| GET | `/usuarios` | Listar usuarios con Sequelize. |
-| GET | `/usuarios/sql` | Listar usuarios con SQL manual. |
-| PUT | `/usuarios/:id` | Actualizar nombre y correo. |
-| DELETE | `/usuarios/:id` | Eliminar un usuario sin pedidos. |
-| GET | `/usuarios/:id/pedidos` | Consultar un usuario y sus pedidos. |
-| POST | `/transacciones/usuario-con-pedido` | Crear un usuario nuevo y su primer pedido. |
-
-Las rutas de datos responden con la estructura:
+En Postman, seleccionar **Body → raw → JSON** para enviar datos. Registrar mediante POST `/registro`:
 
 ```json
-{
-  "status": "success",
-  "message": "Descripción del resultado",
-  "data": {}
-}
+{"nombre":"Prueba Registro","email":"registro8@example.com","password":"Prueba123"}
 ```
 
-En errores controlados, `status` vale `error` y `data` es `null`. Se utilizan 200 para consultas y modificaciones exitosas, 201 para creaciones, 400 para entrada inválida, 404 para usuarios inexistentes, 409 para conflictos y 500 para errores inesperados o la simulación de rollback. Los errores de JSON mal formado del parser de Express no tienen un middleware propio que unifique su formato.
-
-## Pruebas con Postman
-
-Para POST y PUT seleccionar Body → raw → JSON. Para GET y DELETE seleccionar Body → none. El servidor debe estar ejecutándose.
-
-### Crear tres usuarios
-
-Enviar cada objeto por separado a `POST /usuarios`:
+Iniciar sesión mediante POST `/login`:
 
 ```json
-{"nombre":"Richard","email":"richard@example.com"}
+{"email":"registro8@example.com","password":"Prueba123"}
 ```
 
-```json
-{"nombre":"Camila","email":"camila@example.com"}
-```
+Copiar `data.token` en **Authorization → Bearer Token** de las peticiones protegidas. El token se conserva en Postman durante las pruebas; no se guarda en la base de datos. Dura una hora y se verifica su firma HS256 y vencimiento. Si vence, iniciar sesión nuevamente. Usuarios sin contraseña no pueden iniciar sesión.
 
-```json
-{"nombre":"Diego","email":"diego@example.com"}
-```
+Se protegieron las modificaciones de usuarios, pedidos, perfiles, roles y la subida para exigir autenticación antes de esas operaciones.
 
-Cada creación válida responde 201. Si el correo ya existe responde 409. Ejecutar `GET /usuarios` para obtener la lista y los ID reales.
+Ejemplos adicionales (usar los ID reales de la base):
 
-### Actualizar un usuario
+| Operación | Body JSON |
+| --- | --- |
+| POST `/usuarios` o PUT `/usuarios/:id` | `{"nombre":"Richard","email":"richard@example.com"}` |
+| POST `/pedidos` o PUT `/pedidos/:id` | `{"descripcion":"Pedido de prueba","total":25000,"usuarioId":9}` |
+| POST `/usuarios/:id/perfil` | `{"telefono":"+56912345678","direccion":"Dirección de prueba 123"}` |
+| POST `/roles` | `{"nombre":"cliente"}` |
+| POST `/transacciones/usuario-con-pedido` | `{"nombre":"Valentina","email":"valentina@example.com","descripcion":"Primera compra","total":25000,"simularError":false}` |
 
-Enviar a `PUT /usuarios/ID_REAL`:
+GET, DELETE y la asociación de roles se envían con **Body → none**. PUT exige todos los campos mostrados. En la transacción, usar un correo nuevo; `simularError: true` provoca un error 500 intencional y revierte la creación de ambos registros. GET `/usuarios` y `/usuarios/sql` permiten comparar ORM y SQL sin filtros ni cambios entre consultas.
 
-```json
-{"nombre":"Richard Salazar","email":"richard@example.com"}
-```
+## Subida de archivos
 
-Se deben enviar ambos campos. Solo se permite modificar nombre y correo; el ID no cambia y Sequelize gestiona las fechas. Si se envían exactamente los mismos datos, puede no cambiar `updatedAt` porque no hay una modificación efectiva.
+Enviar POST `/upload` con token. En **Body → form-data**, agregar `archivo` de tipo **File** y seleccionar un JPG, JPEG o PNG de menos de 2 MB (2.097.152 bytes). Postman configura automáticamente Content-Type.
 
-Para comprobar 404, repetir con un ID válido que no exista.
+Se utiliza `express-fileupload`, se valida la extensión con `split(".").pop().toLowerCase()` y se limita el tamaño. El servicio guarda en `uploads/` con un nombre generado por `randomUUID()`. La respuesta 201 entrega `nombre` y `url`; abrir `http://localhost:3000` más esa URL para ver el archivo.
 
-### Eliminar un usuario
+## Validaciones y decisiones
 
-Crear un usuario temporal con un correo nuevo y luego enviar `DELETE /usuarios/ID_TEMPORAL`. La respuesta esperada es 200. Repetir el DELETE debe responder 404. Esto permite conservar los tres usuarios de prueba.
+Separé rutas, controladores y servicios para identificar la responsabilidad de cada archivo. Utilicé `express-validator` antes de insertar o modificar datos: campos obligatorios, tipos, longitudes, formato del correo e identificadores positivos. También validé el total de pedidos y la existencia del usuario relacionado. Se controlan correos, perfiles y nombres de roles duplicados.
 
-### Transacción exitosa
+El nombre admite 100 caracteres, el correo 150 y la contraseña de registro entre 6 y 100. Los pedidos admiten descripción de 200 caracteres y total entre 0 y 99999999.99, con hasta dos decimales. El filtro por nombre utiliza `Op.iLike` sin distinguir mayúsculas.
 
-Enviar a `POST /transacciones/usuario-con-pedido`:
+Para el módulo 8 agregué `password` conservando los usuarios anteriores, excluí la contraseña de la respuesta de actualización e incorporé respuestas JSON para rutas inexistentes y JSON mal formado. Las nuevas relaciones se consultan con `include`; los roles se asocian mediante `addRoles([rol])`.
 
-```json
-{
-  "nombre":"Valentina",
-  "email":"valentina@example.com",
-  "descripcion":"Primera compra",
-  "total":25000,
-  "simularError":false
-}
-```
+**Alcance de práctica:** se usan contraseñas ficticias almacenadas como texto. JWT comprueba autenticación, sin permisos por usuario o rol. La subida revisa la extensión, no el contenido real; los archivos son públicos y no están vinculados a registros. No se implementaron las opciones extra de Swagger ni asociación de archivos con usuarios.
 
-La respuesta esperada es 201 con el usuario y el pedido. El `usuarioId` del pedido coincide con el ID del nuevo usuario. Usar un correo nuevo en cada repetición exitosa.
+## Evidencias y aprendizaje
 
-`sequelize.transaction(callback)` administra la transacción. Ambas creaciones reciben la misma opción `transaction`. Si el callback termina correctamente se ejecuta COMMIT; si lanza un error se ejecuta ROLLBACK. El controlador registra el resultado en consola.
+Las capturas de los módulos anteriores están en `Capturas/`. Las 31 del módulo 8 están en `Capturas/Capturas modulo 8/`: registro, login, rutas protegidas, tokens inválidos y vencidos, subida y errores, CRUD de pedidos, filtros y relaciones 1:1 y N:M. Las pruebas se realizaron manualmente con Postman y el navegador.
 
-### Prueba de rollback
+En estos tres módulos aprendí a pasar de un servidor con rutas y archivos a una API conectada a PostgreSQL. Practiqué consultas con Sequelize y SQL, transacciones, validaciones, autenticación JWT y relaciones entre modelos. Probar respuestas exitosas y errores me ayudó a comprobar el comportamiento de la aplicación.
 
-Enviar a la misma ruta:
-
-```json
-{
-  "nombre":"Prueba Rollback",
-  "email":"rollback@example.com",
-  "descripcion":"Pedido que no debe guardarse",
-  "total":10000,
-  "simularError":true
-}
-```
-
-Con datos válidos y un correo no registrado, el servicio provoca un error después de crear ambos registros dentro de la transacción. La respuesta 500 es intencional. Comprobar en pgAdmin, una consulta a la vez:
-
-```sql
-SELECT * FROM usuarios WHERE email = 'rollback@example.com';
-```
-
-```sql
-SELECT * FROM pedidos WHERE descripcion = 'Pedido que no debe guardarse';
-```
-
-Ambas consultas deben devolver cero filas si esos datos no existían previamente. Los valores de secuencias autoincrementales pueden consumirse incluso con rollback, por lo que los saltos de ID son normales.
-
-### Consultar relaciones y proteger pedidos
-
-Ejecutar `GET /usuarios/ID_VALENTINA/pedidos`. Se obtiene el usuario con una lista `pedidos` mediante `include`.
-
-Intentar `DELETE /usuarios/ID_VALENTINA` debe responder 409 porque tiene pedidos. Repetir el GET permite comprobar que ambos registros siguen presentes.
-
-### Comparar SQL manual y ORM
-
-Comparar `GET /usuarios` y `GET /usuarios/sql` sin modificar datos entre las consultas. Ambas rutas seleccionan los mismos campos y ordenan por ID ascendente; el contenido de `data` debe coincidir.
-
-La primera utiliza `Usuario.findAll()`. La segunda usa un SELECT escrito manualmente mediante `sequelize.query()` y `QueryTypes.SELECT`.
-
-### Validaciones con express-validator
-
-Enviar a `POST /usuarios`:
-
-```json
-{"nombre":"Prueba","email":"correo-invalido"}
-```
-
-Debe responder 400 con un mensaje de correo inválido. También se rechazan campos vacíos, tipos incorrectos, longitudes superiores a las columnas, ID inválidos, total negativo o fuera del rango permitido y `simularError` que no sea booleano.
-
-Se aplica `trim()` a los textos y se convierte el correo a minúsculas. El total debe ser un número JSON de hasta dos decimales; `simularError` debe ser `true` o `false` sin comillas. PUT sigue requiriendo nombre y correo.
-
-Los controladores conservan el manejo de errores de base de datos. Las validaciones del modelo también se mantienen como una segunda capa.
-
-## Decisiones técnicas y aprendizaje
-
-Elegí PostgreSQL y Sequelize porque permiten trabajar con datos relacionados utilizando modelos de JavaScript. El paquete pg proporciona el controlador de PostgreSQL que utiliza Sequelize. Las credenciales se configuran en variables de entorno y no se incluyen en el repositorio.
-
-Separé rutas, controladores y servicios para identificar la responsabilidad de cada archivo. Incorporé express-validator en middlewares para evitar repetir validaciones en los controladores.
-
-Solo permití actualizar nombre y correo para evitar cambios accidentales en el identificador y las fechas. Validé tipos, contenido, formato del correo, longitudes y valores numéricos; también manejé usuarios inexistentes y correos duplicados.
-
-El ORM simplificó operaciones como crear registros, buscar por ID y traer relaciones. La consulta SQL manual permitió comprobar que ambos enfoques consultan la misma información y entender qué consulta se ejecuta.
-
-La transacción permitió comprender que crear un usuario y un pedido puede tratarse como una sola operación: ambos registros se confirman juntos o se deshacen si ocurre un error. La prueba de rollback se verificó consultando las dos tablas.
-
-## Evidencias y entrega
-
-La carpeta `Capturas` contiene evidencias de las rutas públicas, CRUD, validaciones, transacción exitosa, rollback, relaciones, consultas ORM y SQL y restricción de eliminación.
-
-La entrega del módulo 7 requiere actualizar el repositorio GitHub y organizar las capturas en la subcarpeta de Google Drive `Parte 2 – Módulo 7`. La actualización de este README no sustituye esos pasos.
+La entrega incluye el repositorio GitHub actualizado y las evidencias nuevas en la subcarpeta de Drive **Parte 3 – Módulo 8**.

@@ -2,7 +2,8 @@
 import { Usuario, Pedido } from "../models/index.js";
 
 import sequelize from "../config/db.js";
-import { QueryTypes } from "sequelize";
+// Importa el tipo de consulta SQL y los operadores de Sequelize.
+import { QueryTypes, Op } from "sequelize";
 
 // Guarda un nuevo usuario en la base de datos.
 export const crearUsuario = async (nombre, email) => {
@@ -14,10 +15,19 @@ export const crearUsuario = async (nombre, email) => {
   return usuario;
 };
 
-// Obtiene los usuarios ordenados por ID.
-export const obtenerUsuarios = async () => {
+// Obtiene los usuarios y permite filtrar por parte del nombre.
+export const obtenerUsuarios = async (nombre) => {
+  const filtros = {};
+
+  if (nombre) {
+    filtros.nombre = {
+      [Op.iLike]: `%${nombre}%`,
+    };
+  }
+
   return await Usuario.findAll({
     attributes: ["id", "nombre", "email", "createdAt", "updatedAt"],
+    where: filtros,
     order: [["id", "ASC"]],
   });
 };
@@ -34,7 +44,14 @@ export const actualizarUsuario = async (id, nombre, email) => {
   // Actualiza solamente nombre y email.
   await usuario.update({ nombre, email });
 
-  return usuario;
+  // Devuelve los datos actualizados sin incluir la contraseña.
+  return {
+    id: usuario.id,
+    nombre: usuario.nombre,
+    email: usuario.email,
+    createdAt: usuario.createdAt,
+    updatedAt: usuario.updatedAt,
+  };
 };
 
 // Busca un usuario y lo elimina si existe.

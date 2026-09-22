@@ -59,7 +59,10 @@ export const crearUsuario = async (req, res) => {
 // Controlador para listar usuarios.
 export const obtenerUsuarios = async (req, res) => {
   try {
-    const usuarios = await obtenerUsuariosService();
+    // Obtiene el filtro de nombre enviado en la URL.
+    const { nombre } = req.query;
+
+    const usuarios = await obtenerUsuariosService(nombre);
 
     return res.status(200).json({
       status: "success",

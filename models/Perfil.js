@@ -4,9 +4,9 @@ import { DataTypes } from "sequelize";
 // Importa la conexión configurada.
 import sequelize from "../config/db.js";
 
-// Define el modelo Usuario.
-const Usuario = sequelize.define(
-  "Usuario",
+// Define el perfil asociado a un usuario.
+const Perfil = sequelize.define(
+  "Perfil",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -14,31 +14,32 @@ const Usuario = sequelize.define(
       autoIncrement: true,
     },
 
-    nombre: {
-      type: DataTypes.STRING(100),
+    telefono: {
+      type: DataTypes.STRING(20),
       allowNull: false,
       validate: {
         notEmpty: true,
       },
     },
 
-    email: {
-      type: DataTypes.STRING(150),
+    direccion: {
+      type: DataTypes.STRING(200),
       allowNull: false,
-      unique: true,
       validate: {
-        isEmail: true,
+        notEmpty: true,
       },
     },
-    password: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
+
+    usuarioId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      unique: true,
     },
   },
   {
-    tableName: "usuarios",
+    tableName: "perfiles",
     timestamps: true,
   }
 );
 
-export default Usuario;
+export default Perfil;

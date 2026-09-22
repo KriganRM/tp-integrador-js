@@ -4,9 +4,9 @@ import { DataTypes } from "sequelize";
 // Importa la conexión configurada.
 import sequelize from "../config/db.js";
 
-// Define el modelo Usuario.
-const Usuario = sequelize.define(
-  "Usuario",
+// Define los roles que pueden asociarse a los usuarios.
+const Rol = sequelize.define(
+  "Rol",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -15,30 +15,18 @@ const Usuario = sequelize.define(
     },
 
     nombre: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.STRING(50),
       allowNull: false,
+      unique: true,
       validate: {
         notEmpty: true,
       },
     },
-
-    email: {
-      type: DataTypes.STRING(150),
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true,
-      },
-    },
-    password: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-    },
   },
   {
-    tableName: "usuarios",
+    tableName: "roles",
     timestamps: true,
   }
 );
 
-export default Usuario;
+export default Rol;
